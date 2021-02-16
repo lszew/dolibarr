@@ -58,7 +58,7 @@ $error = 0;
 $id = GETPOST('id', 'int');
 $ref = GETPOST('ref', 'alpha');
 $socid = GETPOST('socid', 'int');
-$action = GETPOST('action', 'alpha');
+$action = GETPOST('action', 'aZ09');
 $origin = GETPOST('origin', 'alpha');
 $originid = GETPOST('originid', 'int');
 $confirm = GETPOST('confirm', 'alpha');
@@ -97,22 +97,22 @@ if ($id > 0 || !empty($ref)) {
 }
 
 // Common permissions
-$usercanread		= $user->rights->supplier_proposal->lire;
+$usercanread = $user->rights->supplier_proposal->lire;
 $usercancreate		= $user->rights->supplier_proposal->creer;
 $usercandelete		= $user->rights->supplier_proposal->supprimer;
 
 // Advanced permissions
-$usercanvalidate	= ((empty($conf->global->MAIN_USE_ADVANCED_PERMS) && !empty($usercancreate)) || (!empty($conf->global->MAIN_USE_ADVANCED_PERMS) && !empty($user->rights->supplier_proposal->validate_advance)));
-$usercansend		= (empty($conf->global->MAIN_USE_ADVANCED_PERMS) || $user->rights->supplier_proposal->send_advance);
+$usercanvalidate = ((empty($conf->global->MAIN_USE_ADVANCED_PERMS) && !empty($usercancreate)) || (!empty($conf->global->MAIN_USE_ADVANCED_PERMS) && !empty($user->rights->supplier_proposal->validate_advance)));
+$usercansend = (empty($conf->global->MAIN_USE_ADVANCED_PERMS) || $user->rights->supplier_proposal->send_advance);
 
 // Additional area permissions
-$usercanclose		= $user->rights->supplier_proposal->cloturer;
-$usercancreateorder	= $user->rights->fournisseur->commande->creer;
+$usercanclose = $user->rights->supplier_proposal->cloturer;
+$usercancreateorder = $user->rights->fournisseur->commande->creer;
 
 // Permissions for includes
-$permissionnote		= $usercancreate; // Used by the include of actions_setnotes.inc.php
-$permissiondellink	= $usercancreate; // Used by the include of actions_dellink.inc.php
-$permissiontoedit	= $usercancreate; // Used by the include of actions_lineupdown.inc.php
+$permissionnote = $usercancreate; // Used by the include of actions_setnotes.inc.php
+$permissiondellink = $usercancreate; // Used by the include of actions_dellink.inc.php
+$permissiontoedit = $usercancreate; // Used by the include of actions_lineupdown.inc.php
 
 
 /*
@@ -191,7 +191,7 @@ if (empty($reshook))
 				$outputlangs->setDefaultLang($newlang);
 			}
 			$ret = $object->fetch($id); // Reload to get new records
-			$object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
+			$object->generateDocument($object->model_pdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
 		}
 
 		header('Location: '.$_SERVER["PHP_SELF"].'?id='.$object->id);
@@ -217,7 +217,7 @@ if (empty($reshook))
 						$outputlangs = new Translate("", $conf);
 						$outputlangs->setDefaultLang($newlang);
 					}
-					$model = $object->modelpdf;
+					$model = $object->model_pdf;
 					$ret = $object->fetch($id); // Reload to get new records
 
 					$object->generateDocument($model, $outputlangs, $hidedetails, $hidedesc, $hideref);
@@ -229,7 +229,7 @@ if (empty($reshook))
 			else setEventMessages($langs->trans($object->error), null, 'errors');
 		}
 	} elseif ($action == 'setdate_livraison' && $usercancreate) {
-		$result = $object->set_date_livraison($user, dol_mktime(12, 0, 0, $_POST['liv_month'], $_POST['liv_day'], $_POST['liv_year']));
+		$result = $object->setDeliveryDate($user, dol_mktime(12, 0, 0, $_POST['liv_month'], $_POST['liv_day'], $_POST['liv_year']));
 		if ($result < 0)
 			dol_print_error($db, $object->error);
 	}
@@ -257,36 +257,38 @@ if (empty($reshook))
 			{
 				if ($object->fetch(GETPOST('copie_supplier_proposal')) > 0) {
 					$object->ref = GETPOST('ref');
-					$object->date_livraison = $date_delivery;
+					$object->date_livraison = $date_delivery; // deprecated
+					$object->delivery_date = $date_delivery;
 					$object->shipping_method_id = GETPOST('shipping_method_id', 'int');
 					$object->cond_reglement_id = GETPOST('cond_reglement_id');
 					$object->mode_reglement_id = GETPOST('mode_reglement_id');
 					$object->fk_account = GETPOST('fk_account', 'int');
-					$object->remise_percent = GETPOST('remise_percent');
-					$object->remise_absolue = GETPOST('remise_absolue');
+					$object->remise_percent = price2num(GETPOST('remise_percent'), 2);
+					$object->remise_absolue = price2num(GETPOST('remise_absolue'), 'MU');
 					$object->socid = GETPOST('socid');
 					$object->fk_project = GETPOST('projectid', 'int');
-					$object->modelpdf = GETPOST('model');
+					$object->model_pdf = GETPOST('model');
 					$object->author = $user->id; // deprecated
-					$object->note = GETPOST('note', 'none');
+					$object->note = GETPOST('note', 'restricthtml');
+					$object->note_private = GETPOST('note', 'restricthtml');
 					$object->statut = SupplierProposal::STATUS_DRAFT;
-
-					$id = $object->create_from($user);
 				} else {
 					setEventMessages($langs->trans("ErrorFailedToCopyProposal", GETPOST('copie_supplier_proposal')), null, 'errors');
 				}
 			} else {
 				$object->ref = GETPOST('ref');
 				$object->date_livraison = $date_delivery;
+				$object->delivery_date = $date_delivery;
 				$object->demand_reason_id = GETPOST('demand_reason_id');
 				$object->shipping_method_id = GETPOST('shipping_method_id', 'int');
 				$object->cond_reglement_id = GETPOST('cond_reglement_id');
 				$object->mode_reglement_id = GETPOST('mode_reglement_id');
 				$object->fk_account = GETPOST('fk_account', 'int');
 				$object->fk_project = GETPOST('projectid', 'int');
-				$object->modelpdf = GETPOST('model');
+				$object->model_pdf = GETPOST('model');
 				$object->author = $user->id; // deprecated
-				$object->note = GETPOST('note', 'none');
+				$object->note = GETPOST('note', 'restricthtml');
+				$object->note_private = GETPOST('note', 'restricthtml');
 
 				$object->origin = GETPOST('origin');
 				$object->origin_id = GETPOST('originid');
@@ -436,7 +438,7 @@ if (empty($reshook))
 								$outputlangs = new Translate("", $conf);
 								$outputlangs->setDefaultLang($newlang);
 							}
-							$model = $object->modelpdf;
+							$model = $object->model_pdf;
 
 							$ret = $object->fetch($id); // Reload to get new records
 							$result = $object->generateDocument($model, $outputlangs, $hidedetails, $hidedesc, $hideref);
@@ -482,7 +484,7 @@ if (empty($reshook))
 		} else {
 			// prevent browser refresh from closing proposal several times
 			if ($object->statut == SupplierProposal::STATUS_VALIDATED) {
-				$object->cloture($user, GETPOST('statut'), GETPOST('note', 'none'));
+				$object->cloture($user, GETPOST('statut'), GETPOST('note', 'restricthtml'));
 			}
 		}
 	}
@@ -493,7 +495,7 @@ if (empty($reshook))
 	// Actions to send emails
 	$triggersendname = 'PROPOSAL_SUPPLIER_SENTBYMAIL';
 	$autocopy = 'MAIN_MAIL_AUTOCOPY_SUPPLIER_PROPOSAL_TO';
-	$trackid = 'spr'.$object->id;
+	$trackid = 'spro'.$object->id;
 	include DOL_DOCUMENT_ROOT.'/core/actions_sendmails.inc.php';
 
 	// Actions to build doc
@@ -517,7 +519,7 @@ if (empty($reshook))
 				$outputlangs->setDefaultLang($newlang);
 			}
 			$ret = $object->fetch($id); // Reload to get new records
-			$object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
+			$object->generateDocument($object->model_pdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
 		}
 	}	elseif ($action == "setabsolutediscount" && $usercancreate) {
 		if ($_POST["remise_id"]) {
@@ -538,25 +540,24 @@ if (empty($reshook))
 
 		// Set if we used free entry or predefined product
 		$predef = '';
-		$product_desc = (GETPOST('dp_desc') ?GETPOST('dp_desc') : '');
+		$product_desc = (GETPOSTISSET('dp_desc') ? GETPOST('dp_desc', 'restricthtml') : '');
 		$date_start = dol_mktime(GETPOST('date_start'.$predef.'hour'), GETPOST('date_start'.$predef.'min'), GETPOST('date_start'.$predef.'sec'), GETPOST('date_start'.$predef.'month'), GETPOST('date_start'.$predef.'day'), GETPOST('date_start'.$predef.'year'));
 		$date_end = dol_mktime(GETPOST('date_end'.$predef.'hour'), GETPOST('date_end'.$predef.'min'), GETPOST('date_end'.$predef.'sec'), GETPOST('date_end'.$predef.'month'), GETPOST('date_end'.$predef.'day'), GETPOST('date_end'.$predef.'year'));
 		$ref_supplier = GETPOST('fourn_ref', 'alpha');
 		$prod_entry_mode = GETPOST('prod_entry_mode');
-		if ($prod_entry_mode == 'free')
-		{
+		if ($prod_entry_mode == 'free')	{
 			$idprod = 0;
-			$price_ht = GETPOST('price_ht');
+			$price_ht = price2num(GETPOST('price_ht'), 'MU');
 			$tva_tx = (GETPOST('tva_tx') ? GETPOST('tva_tx') : 0);
 		} else {
 			$idprod = GETPOST('idprod', 'int');
-			$price_ht = '';
+			$price_ht = price2num(GETPOST('price_ht'), 'MU');
 			$tva_tx = '';
 		}
 
-		$qty = GETPOST('qty'.$predef);
-		$remise_percent = GETPOST('remise_percent'.$predef);
-		$price_ht_devise = GETPOST('multicurrency_price_ht');
+		$qty = price2num(GETPOST('qty'.$predef, 'alpha'), 'MS');
+		$remise_percent = price2num(GETPOST('remise_percent'.$predef), 2);
+		$price_ht_devise = price2num(GETPOST('multicurrency_price_ht'), 'CU');
 
 		// Extrafields
 		$extralabelsline = $extrafields->fetch_name_optionals_label($object->table_element_line);
@@ -584,8 +585,8 @@ if (empty($reshook))
 			$error++;
 		}
 		if (!$error && ($qty >= 0)) {
-			$pu_ht = 0;
-			$pu_ttc = 0;
+		    $pu_ht = price2num($price_ht, 'MU');
+		    $pu_ttc = price2num(GETPOST('price_ttc'), 'MU');
 			$price_min = 0;
 			$price_base_type = (GETPOST('price_base_type', 'alpha') ? GETPOST('price_base_type', 'alpha') : 'HT');
 
@@ -634,7 +635,7 @@ if (empty($reshook))
 
 					// if we use supplier description of the products
 					if (!empty($productsupplier->desc_supplier) && !empty($conf->global->PRODUIT_FOURN_TEXTS)) {
-					    $desc = $productsupplier->desc_supplier;
+						$desc = $productsupplier->desc_supplier;
 					} else $desc = $productsupplier->description;
 
 					if (trim($product_desc) != trim($desc)) $desc = dol_concatdesc($desc, $product_desc, '', !empty($conf->global->MAIN_CHANGE_ORDER_CONCAT_DESCRIPTION));
@@ -650,12 +651,12 @@ if (empty($reshook))
 					$localtax1_tx = get_localtax($tva_tx, 1, $mysoc, $object->thirdparty, $tva_npr);
 					$localtax2_tx = get_localtax($tva_tx, 2, $mysoc, $object->thirdparty, $tva_npr);
 
-					$pu_ht = $productsupplier->fourn_pu;
 					if (empty($pu_ht)) $pu_ht = 0; // If pu is '' or null, we force to have a numeric value
 
 					// If GETPOST('idprodfournprice') is a numeric, we can use it. If it is empty or if it is 'idprod_123', we should use -1 (not used)
 					$fournprice = (is_numeric(GETPOST('idprodfournprice', 'alpha')) ? GETPOST('idprodfournprice', 'alpha') : -1);
 					$buyingprice = 0;
+					$pu_ht_devise = price2num($price_ht_devise, 'MU');
 
 					$result = $object->addline(
 						$desc,
@@ -681,10 +682,10 @@ if (empty($reshook))
 						$productsupplier->fk_unit,
 						'',
 						0,
-						$productsupplier->fourn_multicurrency_unitprice,
+						$pu_ht_devise,
 						$date_start,
 						$date_end
-                    );
+					);
 
 					//var_dump($tva_tx);var_dump($productsupplier->fourn_pu);var_dump($price_base_type);exit;
 					if ($result < 0)
@@ -719,7 +720,9 @@ if (empty($reshook))
 
 				$fk_unit = GETPOST('units', 'alpha');
 
-				$tva_tx = price2num($tva_tx); // When vat is text input field
+				if (!preg_match('/\((.*)\)/', $tva_tx)) {
+					$tva_tx = price2num($tva_tx); // When vat is text input field
+				}
 
 				// Local Taxes
 				$localtax1_tx = get_localtax($tva_tx, 1, $mysoc, $object->thirdparty);
@@ -780,7 +783,7 @@ if (empty($reshook))
 						$outputlangs = new Translate("", $conf);
 						$outputlangs->setDefaultLang($newlang);
 					}
-					$model = $object->modelpdf;
+					$model = $object->model_pdf;
 					$ret = $object->fetch($id); // Reload to get new records
 
 					$result = $object->generateDocument($model, $outputlangs, $hidedetails, $hidedesc, $hideref);
@@ -841,7 +844,7 @@ if (empty($reshook))
 			$info_bits |= 0x01;
 
 		// Clean parameters
-		$description = dol_htmlcleanlastbr(GETPOST('product_desc', 'none'));
+		$description = dol_htmlcleanlastbr(GETPOST('product_desc', 'restricthtml'));
 
 		// Define vat_rate
 		$vat_rate = str_replace('*', '', $vat_rate);
@@ -868,7 +871,7 @@ if (empty($reshook))
 		}
 
 		$price_base_type = 'HT';
-		$pu_ht_devise = GETPOST('multicurrency_subprice');
+		$pu_ht_devise = price2num(GETPOST('multicurrency_subprice'), 'CU');
 
 		// Add buying price
 		$fournprice = (GETPOST('fournprice') ? GETPOST('fournprice') : '');
@@ -928,10 +931,10 @@ if (empty($reshook))
 			$fk_unit = GETPOST('units');
 
 			$result = $object->updateline(
-				GETPOST('lineid'),
+				GETPOST('lineid', 'int'),
 				$ht,
-				GETPOST('qty'),
-				GETPOST('remise_percent'),
+				price2num(GETPOST('qty'), 'MS'),
+				price2num(GETPOST('remise_percent'), 2),
 				$vat_rate,
 				$localtax1_rate,
 				$localtax2_rate,
@@ -939,7 +942,7 @@ if (empty($reshook))
 				$price_base_type,
 				$info_bits,
 				$special_code,
-				GETPOST('fk_parent_line'),
+				GETPOST('fk_parent_line', 'int'),
 				0,
 				$fournprice,
 				$buyingprice,
@@ -963,7 +966,7 @@ if (empty($reshook))
 						$outputlangs->setDefaultLang($newlang);
 					}
 					$ret = $object->fetch($id); // Reload to get new records
-					$object->generateDocument($object->modelpdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
+					$object->generateDocument($object->model_pdf, $outputlangs, $hidedetails, $hidedesc, $hideref);
 				}
 
 				unset($_POST['qty']);
@@ -998,7 +1001,7 @@ if (empty($reshook))
 				setEventMessages($object->error, $object->errors, 'errors');
 			}
 		}
-	}	elseif ($action == 'updateline' && $usercancreate && GETPOST('cancel', 'alpha') == $langs->trans('Cancel')) {
+	}	elseif ($action == 'updateline' && $usercancreate && GETPOST('cancel', 'alpha') == $langs->trans("Cancel")) {
 		header('Location: '.$_SERVER['PHP_SELF'].'?id='.$object->id); // Pour reaffichage de la fiche en cours d'edition
 		exit();
 	}
@@ -1017,9 +1020,9 @@ if (empty($reshook))
 	elseif ($action == 'setconditions' && $usercancreate) {
 		$result = $object->setPaymentTerms(GETPOST('cond_reglement_id', 'int'));
 	} elseif ($action == 'setremisepercent' && $usercancreate) {
-		$result = $object->set_remise_percent($user, GETPOST('remise_percent', 'alpha'));
+		$result = $object->set_remise_percent($user, price2num(GETPOST('remise_percent'), 2));
 	} elseif ($action == 'setremiseabsolue' && $usercancreate) {
-		$result = $object->set_remise_absolue($user, GETPOST('remise_absolue', 'alpha'));
+		$result = $object->set_remise_absolue($user, price2num(GETPOST('remise_absolue'), 'MU'));
 	}
 
 	// Payment mode
@@ -1039,7 +1042,7 @@ if (empty($reshook))
 		$object->oldcopy = dol_clone($object);
 
 		// Fill array 'array_options' with data from update form
-		$ret = $extrafields->setOptionalsFromPost(null, $object, GETPOST('attribute', 'none'));
+		$ret = $extrafields->setOptionalsFromPost(null, $object, GETPOST('attribute', 'restricthtml'));
 		if ($ret < 0) $error++;
 
 		if (!$error)
@@ -1133,7 +1136,7 @@ if ($action == 'create')
 		print '<input type="hidden" name="originid" value="'.$originid.'">';
 	}
 
-	dol_fiche_head();
+	print dol_get_fiche_head();
 
 	print '<table class="border centpercent">';
 
@@ -1150,7 +1153,7 @@ if ($action == 'create')
 		print '</td>';
 	} else {
 		print '<td colspan="2">';
-		print $form->select_company('', 'socid', 's.fournisseur=1', 'SelectThirdParty', 0, 0, null, 0, 'minwidth300');
+		print img_picto('', 'company').$form->select_company('', 'socid', 's.fournisseur=1', 'SelectThirdParty', 0, 0, null, 0, 'minwidth300');
 		print ' <a href="'.DOL_URL_ROOT.'/societe/card.php?action=create&client=0&fournisseur=1&backtopage='.urlencode($_SERVER["PHP_SELF"].'?action=create').'"><span class="fa fa-plus-circle valignmiddle paddingleft" title="'.$langs->trans("AddThirdParty").'"></span></a>';
 		print '</td>';
 	}
@@ -1215,8 +1218,9 @@ if ($action == 'create')
 	print '<tr>';
 	print '<td>'.$langs->trans("DefaultModel").'</td>';
 	print '<td colspan="2">';
-	$liste = ModelePDFSupplierProposal::liste_modeles($db);
-	print $form->selectarray('model', $liste, ($conf->global->SUPPLIER_PROPOSAL_ADDON_PDF_ODT_DEFAULT ? $conf->global->SUPPLIER_PROPOSAL_ADDON_PDF_ODT_DEFAULT : $conf->global->SUPPLIER_PROPOSAL_ADDON_PDF));
+	$list = ModelePDFSupplierProposal::liste_modeles($db);
+	$preselected = ($conf->global->SUPPLIER_PROPOSAL_ADDON_PDF_ODT_DEFAULT ? $conf->global->SUPPLIER_PROPOSAL_ADDON_PDF_ODT_DEFAULT : $conf->global->SUPPLIER_PROPOSAL_ADDON_PDF);
+	print $form->selectarray('model', $list, $preselected, 0, 0, 0, '', 0, 0, 0, '', '', 1);
 	print "</td></tr>";
 
 	// Project
@@ -1230,8 +1234,7 @@ if ($action == 'create')
 
 		print '<tr>';
 		print '<td>'.$langs->trans("Project").'</td><td colspan="2">';
-
-		$numprojet = $formproject->select_projects(($soc->id > 0 ? $soc->id : -1), $projectid, 'projectid', 0, 0, 1, 1, 0, 0, 0, '', 0, 0, 'maxwidth500');
+		print img_picto('', 'project').$formproject->select_projects(($soc->id > 0 ? $soc->id : -1), $projectid, 'projectid', 0, 0, 1, 1, 0, 0, 0, '', 1, 0, 'maxwidth500');
 		print ' &nbsp; <a href="'.DOL_URL_ROOT.'/projet/card.php?socid='.$soc->id.'&action=create&status=1&backtopage='.urlencode($_SERVER["PHP_SELF"].'?action=create&socid='.$soc->id).'"><span class="fa fa-plus-circle valignmiddle" title="'.$langs->trans("AddProject").'"></span></a>';
 
 		print '</td>';
@@ -1348,12 +1351,12 @@ if ($action == 'create')
 
 	if (!empty($conf->global->SUPPLIER_PROPOSAL_CLONE_ON_CREATE_PAGE)) print '</table>';
 
-	dol_fiche_end();
+	print dol_get_fiche_end();
 
 	print '<div class="center">';
 	print '<input type="submit" class="button" value="'.$langs->trans("CreateDraft").'">';
 	print '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-	print '<input type="button" class="button" value="'.$langs->trans("Cancel").'" onClick="javascript:history.go(-1)">';
+	print '<input type="button" class="button button-cancel" value="'.$langs->trans("Cancel").'" onClick="javascript:history.go(-1)">';
 	print '</div>';
 
 	print "</form>";
@@ -1381,7 +1384,7 @@ if ($action == 'create')
 	$soc->fetch($object->socid);
 
 	$head = supplier_proposal_prepare_head($object);
-	dol_fiche_head($head, 'comm', $langs->trans('CommRequest'), -1, 'supplier_proposal');
+	print dol_get_fiche_head($head, 'comm', $langs->trans('CommRequest'), -1, 'supplier_proposal');
 
 	$formconfirm = '';
 
@@ -1561,11 +1564,11 @@ if ($action == 'create')
 		print '<form name="editdate_livraison" action="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'" method="post" class="formconsumeproduce">';
 		print '<input type="hidden" name="token" value="'.newToken().'">';
 		print '<input type="hidden" name="action" value="setdate_livraison">';
-		print $form->selectDate($object->date_livraison, 'liv_', '', '', '', "editdate_livraison");
+		print $form->selectDate($object->delivery_date, 'liv_', '', '', '', "editdate_livraison");
 		print '<input type="submit" class="button" value="'.$langs->trans('Modify').'">';
 		print '</form>';
 	} else {
-		print dol_print_date($object->date_livraison, 'daytext');
+		print dol_print_date($object->delivery_date, 'daytext');
 	}
 	print '</td>';
 	print '</tr>';
@@ -1802,7 +1805,7 @@ if ($action == 'create')
 	print '</div>';
 	print "</form>\n";
 
-	dol_fiche_end();
+	print dol_get_fiche_end();
 
 	if ($action == 'statut')
 	{
@@ -1824,8 +1827,8 @@ if ($action == 'create')
 		$form_close .= $object->note;
 		$form_close .= '</textarea></td></tr>';
 		$form_close .= '<tr><td class="center" colspan="2">';
-		$form_close .= '<input type="submit" class="button" name="validate" value="'.$langs->trans('Save').'">';
-		$form_close .= ' &nbsp; <input type="submit" class="button" name="cancel" value="'.$langs->trans('Cancel').'">';
+		$form_close .= '<input type="submit" class="button button-save" name="validate" value="'.$langs->trans("Save").'">';
+		$form_close .= ' &nbsp; <input type="submit" class="button button-cancel" name="cancel" value="'.$langs->trans("Cancel").'">';
 		$form_close .= '<a name="acceptedrefused">&nbsp;</a>';
 		$form_close .= '</td>';
 		$form_close .= '</tr></table></form>';
@@ -1900,7 +1903,7 @@ if ($action == 'create')
 
 				// Delete
 				if (($object->statut == SupplierProposal::STATUS_DRAFT && $usercancreate) || $usercandelete) {
-					print '<div class="inline-block divButAction"><a class="butActionDelete" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&amp;action=delete"';
+					print '<div class="inline-block divButAction"><a class="butActionDelete" href="'.$_SERVER["PHP_SELF"].'?id='.$object->id.'&amp;action=delete&amp;token='.newToken().'"';
 					print '>'.$langs->trans('Delete').'</a></div>';
 				}
 			}
@@ -1922,7 +1925,7 @@ if ($action == 'create')
 		$genallowed = $usercanread;
 		$delallowed = $usercancreate;
 
-		print $formfile->showdocuments('supplier_proposal', $filename, $filedir, $urlsource, $genallowed, $delallowed, $object->modelpdf, 1, 0, 0, 28, 0, '', 0, '', $soc->default_lang);
+		print $formfile->showdocuments('supplier_proposal', $filename, $filedir, $urlsource, $genallowed, $delallowed, $object->model_pdf, 1, 0, 0, 28, 0, '', 0, '', $soc->default_lang);
 
 
 		// Show links to link elements
@@ -1950,7 +1953,7 @@ if ($action == 'create')
 	$defaulttopic = 'SendAskRef';
 	$diroutput = $conf->supplier_proposal->dir_output;
 	$autocopy = 'MAIN_MAIL_AUTOCOPY_SUPPLIER_PROPOSAL_TO';
-	$trackid = 'spr'.$object->id;
+	$trackid = 'spro'.$object->id;
 
 	include DOL_DOCUMENT_ROOT.'/core/tpl/card_presend.tpl.php';
 }

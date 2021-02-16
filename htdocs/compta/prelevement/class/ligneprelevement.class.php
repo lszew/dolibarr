@@ -37,9 +37,9 @@ class LignePrelevement
 	public $id;
 
 	/**
-     * @var DoliDB Database handler.
-     */
-    public $db;
+	 * @var DoliDB Database handler.
+	 */
+	public $db;
 
 	public $statuts = array();
 
@@ -59,7 +59,7 @@ class LignePrelevement
 
 		$langs->load("withdrawals");
 		$this->statuts[0] = $langs->trans("StatusWaiting");
-		$this->statuts[2] = $langs->trans("StatusCredited");
+		$this->statuts[2] = $langs->trans("StatusPaid");
 		$this->statuts[3] = $langs->trans("StatusRefused");
 	}
 
@@ -111,7 +111,7 @@ class LignePrelevement
 		return $error;
 	}
 
-    /**
+	/**
 	 *    Return status label of object
 	 *
 	 *    @param	int		$mode       0=Label, 1=Picto + label, 2=Picto, 3=Label + Picto
@@ -122,7 +122,7 @@ class LignePrelevement
 		return $this->LibStatut($this->statut, $mode);
 	}
 
-    // phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
+	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
 	/**
 	 *    Return status label for a status
 	 *
@@ -132,7 +132,7 @@ class LignePrelevement
 	 */
 	public function LibStatut($status, $mode = 0)
 	{
-        // phpcs:enable
+		// phpcs:enable
 		global $langs;
 
 		if ($mode == 0)

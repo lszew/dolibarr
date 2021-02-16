@@ -1,6 +1,7 @@
 <?php
 /* Copyright (C) 2008-2011 Laurent Destailleur  <eldy@users.sourceforge.net>
  * Copyright (C) 2008-2017 Regis Houssin        <regis.houssin@inodbox.com>
+ * Copyright (C) 2020	   Ferran Marcet        <fmarcet@2byte.es>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -193,6 +194,8 @@ function restrictedArea($user, $features, $objectid = 0, $tableandshare = '', $f
 	if ($features == 'member') $features = 'adherent';
 	if ($features == 'subscription') { $features = 'adherent'; $feature2 = 'cotisation'; };
 	if ($features == 'websitepage') { $features = 'website'; $tableandshare = 'website_page'; $parentfortableentity = 'fk_website@website'; }
+	if ($features == 'project') $features = 'projet';
+	if ($features == 'product') $features = 'produit';
 
 	// Get more permissions checks from hooks
 	$parameters = array('features'=>$features, 'objectid'=>$objectid, 'idtype'=>$dbt_select);
@@ -224,49 +227,37 @@ function restrictedArea($user, $features, $objectid = 0, $tableandshare = '', $f
 
 	// Check read permission from module
 	$readok = 1; $nbko = 0;
-	foreach ($featuresarray as $feature)	// first we check nb of test ko
-	{
+	foreach ($featuresarray as $feature) {	// first we check nb of test ko
 		$featureforlistofmodule = $feature;
 		if ($featureforlistofmodule == 'produit') $featureforlistofmodule = 'product';
-		if (!empty($user->socid) && !empty($conf->global->MAIN_MODULES_FOR_EXTERNAL) && !in_array($featureforlistofmodule, $listofmodules))	// If limits on modules for external users, module must be into list of modules for external users
-		{
+		if (!empty($user->socid) && !empty($conf->global->MAIN_MODULES_FOR_EXTERNAL) && !in_array($featureforlistofmodule, $listofmodules)) {	// If limits on modules for external users, module must be into list of modules for external users
 			$readok = 0; $nbko++;
 			continue;
 		}
 
-		if ($feature == 'societe')
-		{
+		if ($feature == 'societe') {
 			if (!$user->rights->societe->lire && !$user->rights->fournisseur->lire) { $readok = 0; $nbko++; }
-		} elseif ($feature == 'contact')
-		{
+		} elseif ($feature == 'contact') {
 			if (!$user->rights->societe->contact->lire) { $readok = 0; $nbko++; }
-		} elseif ($feature == 'produit|service')
-		{
+		} elseif ($feature == 'produit|service') {
 			if (!$user->rights->produit->lire && !$user->rights->service->lire) { $readok = 0; $nbko++; }
-		} elseif ($feature == 'prelevement')
-		{
+		} elseif ($feature == 'prelevement') {
 			if (!$user->rights->prelevement->bons->lire) { $readok = 0; $nbko++; }
-		} elseif ($feature == 'cheque')
-		{
+		} elseif ($feature == 'cheque') {
 			if (!$user->rights->banque->cheque) { $readok = 0; $nbko++; }
-		} elseif ($feature == 'projet')
-		{
+		} elseif ($feature == 'projet') {
 			if (!$user->rights->projet->lire && !$user->rights->projet->all->lire) { $readok = 0; $nbko++; }
-		} elseif (!empty($feature2))														// This is for permissions on 2 levels
-		{
+		} elseif (!empty($feature2)) { 													// This is for permissions on 2 levels
 			$tmpreadok = 1;
-			foreach ($feature2 as $subfeature)
-			{
+			foreach ($feature2 as $subfeature) {
 				if ($subfeature == 'user' && $user->id == $objectid) continue; // A user can always read its own card
 				if (!empty($subfeature) && empty($user->rights->$feature->$subfeature->lire) && empty($user->rights->$feature->$subfeature->read)) { $tmpreadok = 0; } elseif (empty($subfeature) && empty($user->rights->$feature->lire) && empty($user->rights->$feature->read)) { $tmpreadok = 0; } else { $tmpreadok = 1; break; } // Break is to bypass second test if the first is ok
 			}
-			if (!$tmpreadok)	// We found a test on feature that is ko
-			{
+			if (!$tmpreadok) {	// We found a test on feature that is ko
 				$readok = 0; // All tests are ko (we manage here the and, the or will be managed later using $nbko).
 				$nbko++;
 			}
-		} elseif (!empty($feature) && ($feature != 'user' && $feature != 'usergroup'))		// This is permissions on 1 level
-		{
+		} elseif (!empty($feature) && ($feature != 'user' && $feature != 'usergroup')) {		// This is permissions on 1 level
 			if (empty($user->rights->$feature->lire)
 				&& empty($user->rights->$feature->read)
 				&& empty($user->rights->$feature->run)) { $readok = 0; $nbko++; }
@@ -288,28 +279,24 @@ function restrictedArea($user, $features, $objectid = 0, $tableandshare = '', $f
 	{
 		foreach ($featuresarray as $feature)
 		{
-			if ($feature == 'contact')
-			{
+			if ($feature == 'contact') {
 				if (!$user->rights->societe->contact->creer) { $createok = 0; $nbko++; }
-			} elseif ($feature == 'produit|service')
-			{
+			} elseif ($feature == 'produit|service') {
 				if (!$user->rights->produit->creer && !$user->rights->service->creer) { $createok = 0; $nbko++; }
-			} elseif ($feature == 'prelevement')
-			{
+			} elseif ($feature == 'prelevement') {
 				if (!$user->rights->prelevement->bons->creer) { $createok = 0; $nbko++; }
-			} elseif ($feature == 'commande_fournisseur')
-			{
+			} elseif ($feature == 'commande_fournisseur') {
 				if (!$user->rights->fournisseur->commande->creer) { $createok = 0; $nbko++; }
-			} elseif ($feature == 'banque')
-			{
+			} elseif ($feature == 'banque') {
 				if (!$user->rights->banque->modifier) { $createok = 0; $nbko++; }
-			} elseif ($feature == 'cheque')
-			{
+			} elseif ($feature == 'cheque') {
 				if (!$user->rights->banque->cheque) { $createok = 0; $nbko++; }
-			} elseif (!empty($feature2))														// This is for permissions on one level
-			{
-				foreach ($feature2 as $subfeature)
-				{
+			} elseif ($feature == 'import') {
+				if (!$user->rights->import->run) { $createok = 0; $nbko++; }
+			} elseif ($feature == 'ecm') {
+				if (!$user->rights->ecm->upload) { $createok = 0; $nbko++; }
+			} elseif (!empty($feature2)) {														// This is for permissions on one level
+				foreach ($feature2 as $subfeature) {
 					if ($subfeature == 'user' && $user->id == $objectid && $user->rights->user->self->creer) continue; // User can edit its own card
 					if ($subfeature == 'user' && $user->id == $objectid && $user->rights->user->self->password) continue; // User can edit its own password
 
@@ -324,9 +311,8 @@ function restrictedArea($user, $features, $objectid = 0, $tableandshare = '', $f
 						break;
 					}
 				}
-			} elseif (!empty($feature))														// This is for permissions on 2 levels ('creer' or 'write')
-			{
-				//print '<br>feature='.$feature.' creer='.$user->rights->$feature->creer.' write='.$user->rights->$feature->write;
+			} elseif (!empty($feature)) {												// This is for permissions on 2 levels ('creer' or 'write')
+				//print '<br>feature='.$feature.' creer='.$user->rights->$feature->creer.' write='.$user->rights->$feature->write; exit;
 				if (empty($user->rights->$feature->creer)
 				&& empty($user->rights->$feature->write)
 				&& empty($user->rights->$feature->create)) {
@@ -458,7 +444,7 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
 		$checksoc = array('societe'); // Test for societe object
 		$checkother = array('contact', 'agenda'); // Test on entity and link to third party. Allowed if link is empty (Ex: contacts...).
 		$checkproject = array('projet', 'project'); // Test for project object
-		$checktask = array('projet_task');
+		$checktask = array('projet_task');	// Test for task object
 		$nocheck = array('barcode', 'stock'); // No test
 		//$checkdefault = 'all other not already defined'; // Test on entity and link to third party. Not allowed if link is empty (Ex: invoice, orders...).
 
@@ -542,7 +528,7 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
 			{
 				$sql = "SELECT COUNT(dbt.".$dbt_select.") as nb";
 				$sql .= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
-				$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe_commerciaux as sc ON dbt.fk_soc = sc.fk_soc AND sc.fk_user = '".$user->id."'";
+				$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe_commerciaux as sc ON dbt.fk_soc = sc.fk_soc AND sc.fk_user = ".((int) $user->id);
 				$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
 				$sql .= " AND (dbt.fk_soc IS NULL OR sc.fk_soc IS NOT NULL)"; // Contact not linked to a company or to a company of user
 				$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
@@ -554,8 +540,18 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
 				$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
 				$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
 			}
-		} elseif (in_array($feature, $checkproject))
-		{
+			if ($feature == 'agenda')// Also check owner or attendee for users without allactions->read
+			{
+				if ($objectid > 0 && empty($user->rights->agenda->allactions->read)) {
+					require_once DOL_DOCUMENT_ROOT.'/comm/action/class/actioncomm.class.php';
+					$action = new ActionComm($db);
+					$action->fetch($objectid);
+					if ($action->authorid != $user->id && $action->userownerid != $user->id && !(array_key_exists($user->id, $action->userassigned))) {
+						return false;
+					}
+				}
+			}
+		} elseif (in_array($feature, $checkproject)) {
 			if (!empty($conf->projet->enabled) && empty($user->rights->projet->all->lire))
 			{
 				include_once DOL_DOCUMENT_ROOT.'/projet/class/project.class.php';
@@ -569,8 +565,7 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
 				$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
 				$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
 			}
-		} elseif (in_array($feature, $checktask))
-		{
+		} elseif (in_array($feature, $checktask)) {
 			if (!empty($conf->projet->enabled) && empty($user->rights->projet->all->lire))
 			{
 				$task = new Task($db);
@@ -587,29 +582,34 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
 				$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
 				$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
 			}
-		} elseif (!in_array($feature, $nocheck))		// By default (case of $checkdefault), we check on object entity + link to third party on field $dbt_keyfield
-		{
+		} elseif (!in_array($feature, $nocheck)) {		// By default (case of $checkdefault), we check on object entity + link to third party on field $dbt_keyfield
 			// If external user: Check permission for external users
-			if ($user->socid > 0)
-			{
+			if ($user->socid > 0) {
 				if (empty($dbt_keyfield)) dol_print_error('', 'Param dbt_keyfield is required but not defined');
 				$sql = "SELECT COUNT(dbt.".$dbt_keyfield.") as nb";
 				$sql .= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
 				$sql .= " WHERE dbt.rowid IN (".$objectid.")";
 				$sql .= " AND dbt.".$dbt_keyfield." = ".$user->socid;
-			} // If internal user: Check permission for internal users that are restricted on their objects
-			elseif (!empty($conf->societe->enabled) && ($user->rights->societe->lire && !$user->rights->societe->client->voir))
-			{
-				if (empty($dbt_keyfield)) dol_print_error('', 'Param dbt_keyfield is required but not defined');
-				$sql = "SELECT COUNT(sc.fk_soc) as nb";
-				$sql .= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
-				$sql .= ", ".MAIN_DB_PREFIX."societe as s";
-				$sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
-				$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
-				$sql .= " AND sc.fk_soc = dbt.".$dbt_keyfield;
-				$sql .= " AND dbt.".$dbt_keyfield." = s.rowid";
-				$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
-				$sql .= " AND sc.fk_user = ".$user->id;
+			} elseif (!empty($conf->societe->enabled) && !$user->rights->societe->client->voir) {
+				// If internal user: Check permission for internal users that are restricted on their objects
+				if ($feature != 'ticket') {
+					if (empty($dbt_keyfield)) dol_print_error('', 'Param dbt_keyfield is required but not defined');
+					$sql = "SELECT COUNT(sc.fk_soc) as nb";
+					$sql .= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
+					$sql .= ", ".MAIN_DB_PREFIX."societe_commerciaux as sc";
+					$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
+					$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
+					$sql .= " AND sc.fk_soc = dbt.".$dbt_keyfield;
+					$sql .= " AND sc.fk_user = ".$user->id;
+				} else {
+					// On ticket, the thirdparty is not mandatory, so we need a special test to accept record with no thirdparties.
+					$sql = "SELECT COUNT(dbt.".$dbt_select.") as nb";
+					$sql .= " FROM ".MAIN_DB_PREFIX.$dbtablename." as dbt";
+					$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."societe_commerciaux as sc ON sc.fk_soc = dbt.".$dbt_keyfield." AND sc.fk_user = ".$user->id;
+					$sql .= " WHERE dbt.".$dbt_select." IN (".$objectid.")";
+					$sql .= " AND dbt.entity IN (".getEntity($sharedelement, 1).")";
+					$sql .= " AND (sc.fk_user = ".$user->id." OR sc.fk_user IS NULL)";
+				}
 			} // If multicompany and internal users with all permissions, check user is in correct entity
 			elseif (!empty($conf->multicompany->enabled))
 			{
@@ -644,18 +644,18 @@ function checkUserAccessToObject($user, $featuresarray, $objectid = 0, $tableand
  *	@param	int			$printheader		Show header before
  *  @param  int			$printfooter        Show footer after
  *  @param  int			$showonlymessage    Show only message parameter. Otherwise add more information.
- *  @param  array|null  $params         	Send params
+ *  @param  array|null  $params         	More parameters provided to hook
  *  @return	void
  */
 function accessforbidden($message = '', $printheader = 1, $printfooter = 1, $showonlymessage = 0, $params = null)
 {
-    global $conf, $db, $user, $langs, $hookmanager;
-    if (!is_object($langs))
-    {
-        include_once DOL_DOCUMENT_ROOT.'/core/class/translate.class.php';
-        $langs = new Translate('', $conf);
-        $langs->setDefaultLang();
-    }
+	global $conf, $db, $user, $langs, $hookmanager;
+	if (!is_object($langs))
+	{
+		include_once DOL_DOCUMENT_ROOT.'/core/class/translate.class.php';
+		$langs = new Translate('', $conf);
+		$langs->setDefaultLang();
+	}
 
 	$langs->load("errors");
 

@@ -36,8 +36,10 @@ $langs->loadLangs(array("admin", "withdrawals"));
 // Security check
 if (!$user->admin) accessforbidden();
 
-$action = GETPOST('action', 'alpha');
+$action = GETPOST('action', 'aZ09');
 $type = 'paymentorder';
+
+$error = 0;
 
 
 /*
@@ -53,7 +55,7 @@ if ($action == "set")
 	if ($account->fetch($id) > 0)
 	{
 		$res = dolibarr_set_const($db, "PRELEVEMENT_ID_BANKACCOUNT", $id, 'chaine', 0, '', $conf->entity);
-		if (!$res > 0) $error++;
+		if (!($res > 0)) $error++;
 		/*
         $res = dolibarr_set_const($db, "PRELEVEMENT_CODE_BANQUE", $account->code_banque,'chaine',0,'',$conf->entity);
         if (! $res > 0) $error++;
@@ -72,31 +74,27 @@ if ($action == "set")
         */
 	} else $error++;
 
+	/* Moved to account
 	$res = dolibarr_set_const($db, "PRELEVEMENT_ICS", GETPOST("PRELEVEMENT_ICS"), 'chaine', 0, '', $conf->entity);
-	if (!$res > 0) $error++;
-
-	if (GETPOST("PRELEVEMENT_USER") > 0)
-	{
+	if (!($res > 0)) $error++;
+	*/
+	if (GETPOST("PRELEVEMENT_USER") > 0) {
 		$res = dolibarr_set_const($db, "PRELEVEMENT_USER", GETPOST("PRELEVEMENT_USER"), 'chaine', 0, '', $conf->entity);
-		if (!$res > 0) $error++;
+		if (!($res > 0)) $error++;
 	}
-	if (GETPOST("PRELEVEMENT_END_TO_END") || GETPOST("PRELEVEMENT_END_TO_END") == "")
-	{
+	if (GETPOST("PRELEVEMENT_END_TO_END") || GETPOST("PRELEVEMENT_END_TO_END") == "") {
 		$res = dolibarr_set_const($db, "PRELEVEMENT_END_TO_END", GETPOST("PRELEVEMENT_END_TO_END"), 'chaine', 0, '', $conf->entity);
-		if (!$res > 0) $error++;
+		if (!($res > 0)) $error++;
 	}
-	if (GETPOST("PRELEVEMENT_USTRD") || GETPOST("PRELEVEMENT_USTRD") == "")
-	{
+	if (GETPOST("PRELEVEMENT_USTRD") || GETPOST("PRELEVEMENT_USTRD") == "") {
 		$res = dolibarr_set_const($db, "PRELEVEMENT_USTRD", GETPOST("PRELEVEMENT_USTRD"), 'chaine', 0, '', $conf->entity);
-		if (!$res > 0) $error++;
+		if (!($res > 0)) $error++;
 	}
 
-	if (GETPOST("PRELEVEMENT_ADDDAYS") || GETPOST("PRELEVEMENT_ADDDAYS") == "")
-	{
-		$res = dolibarr_set_const($db, "PRELEVEMENT_ADDDAYS", GETPOST("PRELEVEMENT_ADDDAYS"), 'chaine', 0, '', $conf->entity);
-		if (!$res > 0) $error++;
-	} elseif (!$error)
-	{
+    $res = dolibarr_set_const($db, "PRELEVEMENT_ADDDAYS", GETPOST("PRELEVEMENT_ADDDAYS"), 'chaine', 0, '', $conf->entity);
+    if (! ($res > 0)) $error++;
+
+    if (! $error) {
 		$db->commit();
 		setEventMessages($langs->trans("SetupSaved"), null, 'mesgs');
 	} else {
@@ -149,13 +147,16 @@ print '<td class="titlefieldcreate">'.$langs->trans("Parameter").'</td>';
 print '<td>'.$langs->trans("Value").'</td>';
 print "</tr>";
 
+
 // Bank account (from Banks module)
 print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans("BankToReceiveWithdraw").'</td>';
 print '<td class="left">';
 $form->select_comptes($conf->global->PRELEVEMENT_ID_BANKACCOUNT, 'PRELEVEMENT_ID_BANKACCOUNT', 0, "courant=1", 1);
 print '</td></tr>';
 
+/* Moved to bank account data
 // ICS
+
 print '<tr class="oddeven"><td class="fieldrequired">';
 $htmltext = $langs->trans("AskThisIDToYourBank");
 print $form->textwithpicto($langs->trans("ICS"), $htmltext);
@@ -164,6 +165,7 @@ print '<td class="left">';
 print '<input type="text" name="PRELEVEMENT_ICS" value="'.$conf->global->PRELEVEMENT_ICS.'" size="15" >';
 print '</td>';
 print '</td></tr>';
+*/
 
 //User
 print '<tr class="oddeven"><td class="fieldrequired">'.$langs->trans("ResponsibleUser").'</td>';
@@ -193,13 +195,14 @@ print '</td></tr>';
 //ADDDAYS
 print '<tr class="oddeven"><td>'.$langs->trans("ADDDAYS").'</td>';
 print '<td class="left">';
-if (!$conf->global->PRELEVEMENT_ADDDAYS) $conf->global->PRELEVEMENT_ADDDAYS = 0;
+if (empty($conf->global->PRELEVEMENT_ADDDAYS)) $conf->global->PRELEVEMENT_ADDDAYS = 0;
 print '<input type="text" name="PRELEVEMENT_ADDDAYS" value="'.$conf->global->PRELEVEMENT_ADDDAYS.'" size="5" ></td>';
 print '</td></tr>';
+
 print '</table>';
 print '<br>';
 
-print '<div class="center"><input type="submit" class="button" value="'.$langs->trans("Save").'"></div>';
+print '<div class="center"><input type="submit" class="button button-save" value="'.$langs->trans("Save").'"></div>';
 
 print '</form>';
 
@@ -217,7 +220,7 @@ print load_fiche_titre($langs->trans("OrdersModelModule"),'','');
 $def = array();
 $sql = "SELECT nom";
 $sql.= " FROM ".MAIN_DB_PREFIX."document_model";
-$sql.= " WHERE type = '".$type."'";
+$sql.= " WHERE type = '".$db->escape($type)."'";
 $sql.= " AND entity = ".$conf->entity;
 $resql=$db->query($sql);
 if ($resql)
@@ -284,9 +287,7 @@ foreach ($dirmodels as $reldir)
                             if ($module->version == 'development'  && $conf->global->MAIN_FEATURES_LEVEL < 2) $modulequalified=0;
                             if ($module->version == 'experimental' && $conf->global->MAIN_FEATURES_LEVEL < 1) $modulequalified=0;
 
-                            if ($modulequalified)
-                            {
-                                $var = !$var;
+                            if ($modulequalified) {
                                 print '<tr class="oddeven"><td width="100">';
                                 print (empty($module->name)?$name:$module->name);
                                 print "</td><td>\n";
@@ -298,7 +299,7 @@ foreach ($dirmodels as $reldir)
                                 if (in_array($name, $def))
                                 {
                                     print '<td class="center">'."\n";
-                                    print '<a href="'.$_SERVER["PHP_SELF"].'?action=del&value='.$name.'">';
+                                    print '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?action=del&value='.$name.'">';
                                     print img_picto($langs->trans("Enabled"),'switch_on');
                                     print '</a>';
                                     print '</td>';
@@ -306,7 +307,7 @@ foreach ($dirmodels as $reldir)
                                 else
                                 {
                                     print '<td class="center">'."\n";
-                                    print '<a href="'.$_SERVER["PHP_SELF"].'?action=set&value='.$name.'&amp;scan_dir='.$module->scandir.'&amp;label='.urlencode($module->name).'">'.img_picto($langs->trans("Disabled"),'switch_off').'</a>';
+                                    print '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?action=set&amp;token='.newToken().'&amp;value='.$name.'&amp;scan_dir='.$module->scandir.'&amp;label='.urlencode($module->name).'">'.img_picto($langs->trans("Disabled"),'switch_off').'</a>';
                                     print "</td>";
                                 }
 
@@ -318,7 +319,7 @@ foreach ($dirmodels as $reldir)
                                 }
                                 else
                                 {
-                                    print '<a href="'.$_SERVER["PHP_SELF"].'?action=setdoc&value='.$name.'&amp;scan_dir='.$module->scandir.'&amp;label='.urlencode($module->name).'" alt="'.$langs->trans("Default").'">'.img_picto($langs->trans("Disabled"),'off').'</a>';
+                                    print '<a class="reposition" href="'.$_SERVER["PHP_SELF"].'?action=setdoc&amp;token='.newToken().'&amp;value='.$name.'&amp;scan_dir='.$module->scandir.'&amp;label='.urlencode($module->name).'" alt="'.$langs->trans("Default").'">'.img_picto($langs->trans("Disabled"),'off').'</a>';
                                 }
                                 print '</td>';
 
@@ -347,7 +348,7 @@ foreach ($dirmodels as $reldir)
                                 print '<td class="center">';
                                 if ($module->type == 'pdf')
                                 {
-                                    print '<a href="'.$_SERVER["PHP_SELF"].'?action=specimen&module='.$name.'">'.img_object($langs->trans("Preview"),'bill').'</a>';
+                                    print '<a href="'.$_SERVER["PHP_SELF"].'?action=specimen&module='.$name.'">'.img_object($langs->trans("Preview"), 'pdf').'</a>';
                                 }
                                 else
                                 {
@@ -368,7 +369,7 @@ foreach ($dirmodels as $reldir)
 */
 
 
-dol_fiche_end();
+print dol_get_fiche_end();
 
 print '<br>';
 
@@ -472,7 +473,7 @@ if (! empty($conf->global->MAIN_MODULE_NOTIFICATION))
 	        print '<td>'.dolGetFirstLastname($obj->firstname,$obj->lastname).'</td>';
 	        $label=($langs->trans("Notify_".$obj->code)!="Notify_".$obj->code?$langs->trans("Notify_".$obj->code):$obj->label);
 	        print '<td>'.$label.'</td>';
-	        print '<td class="right"><a href="'.$_SERVER["PHP_SELF"].'?action=deletenotif&amp;notif='.$obj->rowid.'">'.img_delete().'</a></td>';
+	        print '<td class="right"><a href="'.$_SERVER["PHP_SELF"].'?action=deletenotif&token='.newToken().'&notif='.$obj->rowid.'">'.img_delete().'</a></td>';
 	        print '</tr>';
 	        $i++;
 	    }
